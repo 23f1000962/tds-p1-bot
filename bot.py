@@ -1,7 +1,6 @@
 import json
 import time
 import os
-import json
 import base64
 import requests
 from datetime import datetime
@@ -76,8 +75,16 @@ def upload_run_jsonl():
         print("GitHub upload failed:", r.text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        ...
+     try:
+        chat_id = update.effective_chat.id
+        user_text = update.message.text
+
+        history = conversation_history.setdefault(chat_id, [])
+
+        history.append({
+            "role": "user",
+            "content": user_text
+        })
     except Exception as e:
         print("Error:", e)
         await update.message.reply_text(
