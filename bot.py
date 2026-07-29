@@ -1,6 +1,7 @@
 import json
 import time
 import os
+import subprocess
 from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
@@ -10,6 +11,17 @@ AIPIPE_TOKEN = os.environ["AIPIPE_TOKEN"]
 LOG_URL = "https://raw.githubusercontent.com/23f1000962/tds-p1-bot/refs/heads/main/run.jsonl"
 client = OpenAI(base_url="https://aipipe.org/openai/v1", api_key=AIPIPE_TOKEN)
 LOG_FILE = "run.jsonl"
+
+GITHUB_USERNAME = os.getenv("GITHUB_USERNAME")
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+
+subprocess.run([
+    "git",
+    "remote",
+    "set-url",
+    "origin",
+    f"https://{GITHUB_USERNAME}:{GITHUB_TOKEN}@github.com/{GITHUB_USERNAME}/YOUR_REPOSITORY.git"
+])
 
 # Keeps the last few messages per chat, so multi-turn questions work —
 # "answer the LAST message" still needs the earlier ones for context.
