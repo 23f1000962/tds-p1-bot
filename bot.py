@@ -75,7 +75,7 @@ def upload_run_jsonl():
         print("GitHub upload failed:", r.text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-     try:
+    try:
         chat_id = update.effective_chat.id
         user_text = update.message.text
 
@@ -85,7 +85,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "role": "user",
             "content": user_text
         })
-     except Exception as e:
+    except Exception as e:
         print("Error:", e)
         await update.message.reply_text(
             json.dumps({
