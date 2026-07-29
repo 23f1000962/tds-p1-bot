@@ -28,10 +28,14 @@ def log_query(question, answer):
         "question": question,
         "answer": answer
     }
-    with open("run.jsonl", "a", encoding="utf-8") as f:
+
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(log_entry) + "\n")
 
-    upload_run_jsonl()
+    try:
+        upload_run_jsonl()
+    except Exception as e:
+        print("Upload failed:", e)
     
 def upload_run_jsonl():
     headers = {
@@ -72,13 +76,16 @@ def upload_run_jsonl():
         print("GitHub upload failed:", r.text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    chat_id = update.effective_chat.id
-    user_text = update.message.text
-    log_event({"type": "incoming", "chat_id": chat_id, "text": user_text})
-
-    history = conversation_history.setdefault(chat_id, [])
-    history.append({"role": "user", "content": user_text})
-
+    try:
+        ...
+    except Exception as e:
+        print("Error:", e)
+        await update.message.reply_text(
+            json.dumps({
+                "error": str(e),
+                "log_url": LOG_URL
+            })
+        )
     # Ask the AI to work out the answer. The system prompt tells it exactly how to
     # format the final reply — this is the part that MUST match what the question asked.
     system_prompt = (
@@ -108,7 +115,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     parsed["log_url"] = LOG_URL
     final_reply = json.dumps(parsed)
 
-    log_event({"type": "outgoing", "chat_id": chat_id, "text": final_reply})
+    log_query(user_text, final_reply)
     await update.message.reply_text(final_reply)
 
 app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
