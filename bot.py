@@ -1,6 +1,10 @@
 import json
 import time
 import os
+import json
+import base64
+import requests
+from datetime import datetime
 from openai import OpenAI
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
@@ -10,15 +14,62 @@ AIPIPE_TOKEN = os.environ["AIPIPE_TOKEN"]
 LOG_URL = "https://raw.githubusercontent.com/23f1000962/tds-p1-bot/refs/heads/main/run.jsonl"
 client = OpenAI(base_url="https://aipipe.org/openai/v1", api_key=AIPIPE_TOKEN)
 LOG_FILE = "run.jsonl"
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+GITHUB_OWNER = os.getenv("GITHUB_OWNER")
+GITHUB_REPO = os.getenv("GITHUB_REPO")
 
 # Keeps the last few messages per chat, so multi-turn questions work —
 # "answer the LAST message" still needs the earlier ones for context.
 conversation_history = {}
 
-def log_event(event: dict):
-    event["timestamp"] = time.time()
-    with open(LOG_FILE, "a") as f:
-        f.write(json.dumps(event) + "\n")
+def log_query(question, answer):
+    log_entry = {
+        "timestamp": datetime.utcnow().isoformat(),
+        "question": question,
+        "answer": answer
+    }
+    with open("run.jsonl", "a", encoding="utf-8") as f:
+        f.write(json.dumps(log_entry) + "\n")
+
+    upload_run_jsonl()
+    
+def upload_run_jsonl():
+    headers = {
+        "Authorization": f"Bearer {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json"
+    }
+
+    url = (
+        f"https://api.github.com/repos/"
+        f"{GITHUB_OWNER}/{GITHUB_REPO}/contents/run.jsonl"
+    )
+
+    # Read the local file
+    with open("run.jsonl", "rb") as f:
+        content = f.read()
+
+    encoded_content = base64.b64encode(content).decode()
+
+    # Get SHA of current file
+    r = requests.get(url, headers=headers)
+
+    sha = None
+    if r.status_code == 200:
+        sha = r.json()["sha"]
+
+    body = {
+        "message": "Update run.jsonl",
+        "content": encoded_content,
+        "branch": "main"
+    }
+
+    if sha:
+        body["sha"] = sha
+
+    r = requests.put(url, headers=headers, json=body)
+
+    if r.status_code not in (200, 201):
+        print("GitHub upload failed:", r.text)
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
