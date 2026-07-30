@@ -28,8 +28,9 @@ model = genai.GenerativeModel("gemini-3.6-flash")
 conversation_history = {}
 
 def log_query(question, answer):
+    ist = timezone(timedelta(hours=5, minutes=30))
     log_entry = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": datetime.now(ist).isoformat(),
         "question": question,
         "answer": answer
     }
