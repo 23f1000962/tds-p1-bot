@@ -3,14 +3,14 @@ import os
 import base64
 import requests
 from datetime import datetime
-from openai import OpenAI
+import google.generativeai as genai
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, ContextTypes, filters
 
-
+# Environment variables
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
-AIPIPE_TOKEN = os.environ.get("AIPIPE_TOKEN")
-GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN") #One can find the token using -> Github setting -> Developer -> fine-grain -> select particular repo -> access of "content" (read & write)
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 GITHUB_OWNER = os.environ.get("GITHUB_OWNER")
 GITHUB_REPO = os.environ.get("GITHUB_REPO")
 
@@ -18,10 +18,12 @@ LOG_URL = "https://raw.githubusercontent.com/23f1000962/tds-p1-bot/refs/heads/ma
 LOG_FILE = "run.jsonl"
 
 # Fail fast if critical tokens are missing
-if not TELEGRAM_BOT_TOKEN or not AIPIPE_TOKEN:
-    raise RuntimeError("Missing TELEGRAM_BOT_TOKEN or AIPIPE_TOKEN in environment variables")
+if not TELEGRAM_BOT_TOKEN or not GEMINI_API_KEY:
+    raise RuntimeError("Missing TELEGRAM_BOT_TOKEN or GEMINI_API_KEY in environment variables")
 
-client = OpenAI(base_url="https://aipipe.org/openai/v1", api_key=AIPIPE_TOKEN)
+# Configure Gemini
+genai.configure(api_key=GEMINI_API_KEY)
+model = genai.GenerativeModel("gemini-3.6-flash")
 
 conversation_history = {}
 
@@ -101,11 +103,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-5-mini",
-            messages=[{"role": "system", "content": system_prompt}] + history[-6:],
-        )
-        reply_text = response.choices[0].message.content.strip()
+        # Gemini takes plain text prompt instead of messages[]
+        full_prompt = system_prompt + "\nUser: " + user_text
+        response = model.generate_content(full_prompt)
+        reply_text = response.text.strip()
+
         history.append({"role": "assistant", "content": reply_text})
 
         try:
